@@ -1,8 +1,15 @@
 -- script.lua
 -- Complex Roblox LocalScript for detecting malicious player scripts in testing
 -- Features: ESP Box, Aimbot, Hologram, Shoot on Look, Shoot on Aim, Auto Kill
--- Includes a UI to toggle and configure features
+-- Includes a functional UI to toggle and configure features
 -- IMPORTANT: Must be run as a LocalScript in Roblox environment
+
+-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
 
 -- Variables
 local enabledFeatures = {
@@ -31,8 +38,8 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 300, 0, 350)
-MainFrame.Position = UDim2.new(0, 20, 0.5, -175)
+MainFrame.Size = UDim2.new(0, 320, 0, 380)
+MainFrame.Position = UDim2.new(0, 20, 0.5, -190)
 MainFrame.BackgroundColor3 = Color3.fromRGB(30,30,30)
 MainFrame.BorderSizePixel = 0
 MainFrame.Visible = true
@@ -41,22 +48,36 @@ MainFrame.Active = true
 MainFrame.Draggable = true
 
 local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1,0,0,30)
+title.Size = UDim2.new(1,0,0,40)
 title.BackgroundTransparency = 1
 title.Text = "Malicious Script Detection"
 title.TextColor3 = Color3.new(1,1,1)
 title.Font = Enum.Font.SourceSansBold
-title.TextSize = 20
+title.TextSize = 24
 title.Parent = MainFrame
 
+local UIContainer = Instance.new("ScrollingFrame")
+UIContainer.Size = UDim2.new(1, -20, 1, -50)
+UIContainer.Position = UDim2.new(0, 10, 0, 45)
+UIContainer.BackgroundTransparency = 1
+UIContainer.CanvasSize = UDim2.new(0,0,0,0)
+UIContainer.Parent = MainFrame
+UIContainer.ScrollBarThickness = 6
+
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Parent = UIContainer
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding = UDim.new(0,8)
+
+-- Helper function to create toggles
 local function CreateToggle(parent, text, defaultChecked, onToggle)
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1,-20,0,30)
+    frame.Size = UDim2.new(1, 0, 0, 35)
     frame.BackgroundTransparency = 1
     frame.Parent = parent
 
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(0.7,0,1,0)
+    label.Size = UDim2.new(0.7, 0, 1, 0)
     label.BackgroundTransparency = 1
     label.Text = text
     label.TextColor3 = Color3.new(1,1,1)
@@ -66,8 +87,9 @@ local function CreateToggle(parent, text, defaultChecked, onToggle)
     label.Parent = frame
 
     local toggleButton = Instance.new("TextButton")
-    toggleButton.Size = UDim2.new(0.3,0,1,0)
-    toggleButton.Position = UDim2.new(0.7,0,0,0)
+    toggleButton.Size = UDim2.new(0.3, -10, 0.8, 0)
+    toggleButton.Position = UDim2.new(0.7, 10, 0.1, 0)
+    toggleButton.AnchorPoint = Vector2.new(0,0)
     toggleButton.BackgroundColor3 = (defaultChecked and Color3.fromRGB(0,170,0) or Color3.fromRGB(170,0,0))
     toggleButton.Text = (defaultChecked and "ON" or "OFF")
     toggleButton.TextColor3 = Color3.new(1,1,1)
@@ -89,14 +111,15 @@ local function CreateToggle(parent, text, defaultChecked, onToggle)
     end)
 end
 
+-- Helper function to create sliders
 local function CreateSlider(parent, text, min, max, default, decimals, onChange)
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1,-20,0,50)
+    frame.Size = UDim2.new(1, 0, 0, 55)
     frame.BackgroundTransparency = 1
     frame.Parent = parent
 
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1,0,0,20)
+    label.Size = UDim2.new(1, 0, 0, 20)
     label.BackgroundTransparency = 1
     label.Text = text .. ": " .. tostring(default)
     label.TextColor3 = Color3.new(1,1,1)
@@ -106,8 +129,8 @@ local function CreateSlider(parent, text, min, max, default, decimals, onChange)
     label.Parent = frame
 
     local slider = Instance.new("TextBox")
-    slider.Size = UDim2.new(1,0,0,20)
-    slider.Position = UDim2.new(0,0,0,25)
+    slider.Size = UDim2.new(1, 0, 0, 25)
+    slider.Position = UDim2.new(0, 0, 0, 27)
     slider.Text = tostring(default)
     slider.ClearTextOnFocus = false
     slider.TextColor3 = Color3.new(1,1,1)
@@ -121,6 +144,7 @@ local function CreateSlider(parent, text, min, max, default, decimals, onChange)
         if num and num >= min and num <= max then
             onChange(num)
             label.Text = text .. ": " .. string.format("%."..decimals.."f", num)
+            slider.Text = string.format("%."..decimals.."f", num)
             slider.TextColor3 = Color3.new(1,1,1)
         else
             slider.TextColor3 = Color3.fromRGB(255,100,100)
@@ -131,18 +155,15 @@ local function CreateSlider(parent, text, min, max, default, decimals, onChange)
         if enterPressed then
             updateValue(slider.Text)
         else
-            slider.Text = string.format("%."..decimals.."f", onChange and settings[text:gsub("%s","")] or default)
+            slider.Text = string.format("%."..decimals.."f", onChange and (function()
+                return settings[text:gsub("%s","")] or default
+            end)() or default)
             slider.TextColor3 = Color3.new(1,1,1)
         end
     end)
 end
 
-local UIContainer = Instance.new("Frame")
-UIContainer.Size = UDim2.new(1,-20,1,-40)
-UIContainer.BackgroundTransparency = 1
-UIContainer.Position = UDim2.new(0,10,0,35)
-UIContainer.Parent = MainFrame
-
+-- Populate UIContainer with toggles
 CreateToggle(UIContainer, "ESP", enabledFeatures.ESP, function(v) enabledFeatures.ESP = v end)
 CreateToggle(UIContainer, "Aimbot", enabledFeatures.Aimbot, function(v) enabledFeatures.Aimbot = v end)
 CreateToggle(UIContainer, "Hologram", enabledFeatures.Hologram, function(v) enabledFeatures.Hologram = v end)
@@ -150,6 +171,7 @@ CreateToggle(UIContainer, "ShootOnLook", enabledFeatures.ShootOnLook, function(v
 CreateToggle(UIContainer, "ShootOnAim", enabledFeatures.ShootOnAim, function(v) enabledFeatures.ShootOnAim = v end)
 CreateToggle(UIContainer, "AutoKill", enabledFeatures.AutoKill, function(v) enabledFeatures.AutoKill = v end)
 
+-- Populate UIContainer with sliders
 CreateSlider(UIContainer, "AimFOV", 5, 180, settings.AimFOV, 0, function(v) settings.AimFOV = v end)
 CreateSlider(UIContainer, "AimSmoothness", 0, 1, settings.AimSmoothness, 2, function(v) settings.AimSmoothness = v end)
 CreateSlider(UIContainer, "ShootInterval", 0.05, 1, settings.ShootInterval, 2, function(v) settings.ShootInterval = v end)
@@ -203,9 +225,8 @@ local function drawESPBox(player)
     local rootPart = getCharacterRoot(player.Character)
     if not rootPart then return end
 
-    -- We'll use BillboardGui attached to rootPart for drawing box
-    -- Check if already has billboardgui
     if rootPart:FindFirstChild("ESPBox") then
+        -- Already exists
         return
     end
 
@@ -229,13 +250,15 @@ end
 local function removeESPBox(player)
     if player.Character then
         local rootPart = getCharacterRoot(player.Character)
-        if rootPart and rootPart:FindFirstChild("ESPBox") then
-            rootPart.ESPBox:Destroy()
+        if rootPart then
+            local espBox = rootPart:FindFirstChild("ESPBox")
+            if espBox then
+                espBox:Destroy()
+            end
         end
     end
 end
 
--- Hologram creation
 local function createHologram(player)
     if not player.Character then return end
     if player.Character:FindFirstChild("HologramClone") then return end
@@ -254,7 +277,6 @@ local function createHologram(player)
     end
     clone.Parent = workspace
 
-    -- Keep it in sync with original: loop to update position
     spawn(function()
         while clone and clone.Parent and player.Character and player.Character.Parent do
             for _, part in pairs(clone:GetDescendants()) do
@@ -282,7 +304,6 @@ local function removeHologram(player)
     end
 end
 
--- Aimbot  
 local function aimbot()
     if not enabledFeatures.Aimbot then return end
     if not isAlive(LocalPlayer) then return end
@@ -292,45 +313,36 @@ local function aimbot()
         local root = getCharacterRoot(target.Character)
         if root then
             local camera = workspace.CurrentCamera
-            local localRoot = getCharacterRoot(LocalPlayer.Character)
-            if localRoot then
-                local camCF = camera.CFrame
-                local targetPos = root.Position + Vector3.new(0, 1.5, 0) -- Aim towards head approx
+            local camCF = camera.CFrame
+            local targetPos = root.Position + Vector3.new(0, 1.5, 0) -- approx head
 
-                local direction = (targetPos - camCF.Position).Unit
-                local lookVector = camCF.LookVector
+            local direction = (targetPos - camCF.Position).Unit
+            local lookVector = camCF.LookVector
 
-                -- Smooth aim adjustment
-                local currentLookVector = lookVector
-                local smoothDir = currentLookVector:Lerp(direction, settings.AimSmoothness)
-                camera.CFrame = CFrame.new(camCF.Position, camCF.Position + smoothDir)
-            end
+            local smoothDir = lookVector:Lerp(direction, settings.AimSmoothness)
+            camera.CFrame = CFrame.new(camCF.Position, camCF.Position + smoothDir)
         end
     end
 end
 
--- Shoot action (stub)
 local function shoot()
     local now = tick()
     if now - lastShotTime < settings.ShootInterval then
         return
     end
     lastShotTime = now
-    -- Here you must implement firing logic; for demonstration:
+
+    -- Implement shoot logic here - placeholder print statement
     print("[Action] Shoot")
-    -- Example: fire remote event or simulate mouse button1 down if possible
 end
 
 local function isLookingAt(player)
     local mouseTarget = Mouse.Target
-    local char = player.Character
-    if not (mouseTarget and char) then return false end
-
-    return mouseTarget:IsDescendantOf(char)
+    if not mouseTarget or not player.Character then return false end
+    return mouseTarget:IsDescendantOf(player.Character)
 end
 
 local function isAimingAt(player)
-    -- We estimate aiming as close to mouse target being the player
     return isLookingAt(player)
 end
 
@@ -352,25 +364,18 @@ local function performShootOnLookAim()
     end
 end
 
--- AutoKill
 local function autoKill()
     if not enabledFeatures.AutoKill then return end
     if not isAlive(LocalPlayer) then return end
 
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and isAlive(player) then
-            local root = getCharacterRoot(player.Character)
-            if root then
-                -- Teleport close or simulate killing (game dependent)
-                -- Here, just print a message (replace with real kill logic)
-                print("[AutoKill] Attempting kill on "..player.Name)
-                -- Example: Fire server event, or perform melee/hit action here
-            end
+            -- Example kill logic placeholder
+            print("[AutoKill] Attacking player:", player.Name)
         end
     end
 end
 
--- Main update loop
 RunService.RenderStepped:Connect(function()
     if enabledFeatures.ESP then
         for _, player in pairs(Players:GetPlayers()) do
@@ -387,7 +392,6 @@ RunService.RenderStepped:Connect(function()
             end
         end
     else
-        -- Clean up ESP and hologram if disabled
         for _, player in pairs(Players:GetPlayers()) do
             removeESPBox(player)
             removeHologram(player)
@@ -402,4 +406,4 @@ RunService.RenderStepped:Connect(function()
     autoKill()
 end)
 
-print("Malicious script detection tool loaded. Use GUI to modify settings.")
+print("Malicious script detection tool loaded with functional GUI.")
