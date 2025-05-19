@@ -4,13 +4,6 @@
 -- Includes a UI to toggle and configure features
 -- IMPORTANT: Must be run as a LocalScript in Roblox environment
 
--- Services
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local LocalPlayer = Players.LocalPlayer
-local Mouse = LocalPlayer:GetMouse()
-
 -- Variables
 local enabledFeatures = {
     ESP = true,
